@@ -211,14 +211,6 @@ async function submitBookForm(event, bookId = null) {
     const form = event.target;
     const formData = new FormData(form);
 
-    // Construir objeto de datos desde el formulario
-    const data = {};
-    formData.forEach((value, key) => {
-        if (value !== '' && value !== null) {
-            data[key] = value;
-        }
-    });
-
     // Determinar si es creación o actualización
     const isUpdate = bookId !== null;
     const url = isUpdate ? `/api/books/${bookId}` : '/api/books';
@@ -227,8 +219,9 @@ async function submitBookForm(event, bookId = null) {
     try {
         const response = await fetch(url, {
             method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            // Al usar FormData como body, fetch configura automáticamente 
+            // Content-Type a multipart/form-data con el boundary correcto
+            body: formData
         });
 
         const result = await response.json();

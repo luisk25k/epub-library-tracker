@@ -13,7 +13,9 @@ Responsabilidades:
 """
 
 import os
+import uuid
 import tempfile
+from werkzeug.utils import secure_filename
 from app.models import create_book, get_book_by_id, update_book, delete_book
 from app.services.epub_parser import parse_epub, delete_cover_file
 
@@ -37,6 +39,28 @@ VALID_STATUSES = {"No leído", "Leyendo", "Leído"}
 
 # Valores válidos para format
 VALID_FORMATS = {"digital", "physical"}
+
+
+# =============================================================================
+# Helper de Archivos
+# =============================================================================
+
+def save_uploaded_cover(file_storage) -> str:
+    """
+    Guarda una imagen de portada subida manualmente por el usuario.
+    Retorna la ruta relativa para almacenar en BD.
+    """
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
+    os.makedirs(COVERS_DIR, exist_ok=True)
+    
+    ext = os.path.splitext(file_storage.filename)[1]
+    if not ext:
+        ext = ".jpg"
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    save_path = os.path.join(COVERS_DIR, unique_name)
+    file_storage.save(save_path)
+    return f"uploads/covers/{unique_name}"
 
 
 # =============================================================================
@@ -94,12 +118,13 @@ def ingest_epub(file_storage) -> dict:
             os.rmdir(temp_dir)
 
 
-def create_book_manual(data: dict) -> dict:
+def create_book_manual(data: dict, cover_file=None) -> dict:
     """
     Crea un libro manualmente a partir de datos del formulario.
 
     Args:
         data: Diccionario con los campos del libro.
+        cover_file: Archivo de portada opcional.
 
     Returns:
         dict: Resultado con el ID del libro creado.
@@ -122,7 +147,11 @@ def create_book_manual(data: dict) -> dict:
         raise ValueError(f"Formato inválido. Opciones: {', '.join(VALID_FORMATS)}")
 
     # Filtrar solo campos válidos
-    clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS and v}
+    clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS and str(v).strip()}
+
+    # Guardar portada si se subió una
+    if cover_file and cover_file.filename:
+        clean_data["cover_path"] = save_uploaded_cover(cover_file)
 
     # Convertir year_published a entero si se proporciona
     if "year_published" in clean_data:
@@ -142,13 +171,14 @@ def create_book_manual(data: dict) -> dict:
     return {"id": book_id, "message": "Libro creado exitosamente"}
 
 
-def update_book_data(book_id: int, data: dict) -> dict:
+def update_book_data(book_id: int, data: dict, cover_file=None) -> dict:
     """
     Actualiza los datos de un libro existente.
 
     Args:
         book_id: ID del libro a actualizar.
         data:    Diccionario con los campos a modificar.
+        cover_file: Archivo de portada opcional.
 
     Returns:
         dict: Resultado de la operación.
@@ -171,19 +201,27 @@ def update_book_data(book_id: int, data: dict) -> dict:
 
     # Filtrar solo campos válidos
     clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS}
+    
+    # Procesar portada si se subió una
+    if cover_file and cover_file.filename:
+        # Eliminar portada anterior si existe
+        if existing.get("cover_path"):
+            delete_cover_file(existing["cover_path"])
+        # Guardar la nueva
+        clean_data["cover_path"] = save_uploaded_cover(cover_file)
 
     # Convertir tipos numéricos
     if "year_published" in clean_data:
         try:
             val = clean_data["year_published"]
-            clean_data["year_published"] = int(val) if val else None
+            clean_data["year_published"] = int(val) if str(val).strip() else None
         except (ValueError, TypeError):
             clean_data.pop("year_published", None)
 
     if "num_pages" in clean_data:
         try:
             val = clean_data["num_pages"]
-            clean_data["num_pages"] = int(val) if val else None
+            clean_data["num_pages"] = int(val) if str(val).strip() else None
         except (ValueError, TypeError):
             clean_data.pop("num_pages", None)
 

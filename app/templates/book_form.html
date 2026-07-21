@@ -128,6 +128,18 @@
                 </select>
             </div>
 
+            <!-- Imagen de Portada -->
+            <div class="col-span-1 md:col-span-2">
+                <label for="cover" class="block text-sm font-medium text-slate-300 mb-1">Imagen de Portada (Opcional)</label>
+                <div class="flex items-center gap-4">
+                    {% if book and book.cover_path %}
+                        <img src="{{ url_for('static', filename=book.cover_path) }}" alt="Portada actual" class="h-20 rounded shadow-md border border-slate-600 object-cover aspect-[2/3]">
+                    {% endif %}
+                    <input type="file" id="cover" name="cover" accept=".jpg,.jpeg,.png,.webp"
+                           class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+            </div>
+
             <!-- Estatus de Lectura -->
             <div class="col-span-1 md:col-span-2">
                 <label for="reading_status" class="block text-sm font-medium text-slate-300 mb-1">Estado de Lectura</label>

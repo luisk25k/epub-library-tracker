@@ -95,33 +95,15 @@ def edit_book(book_id):
 @main.route("/api/books", methods=["POST"])
 def api_create_book():
     """
-    POST /api/books — Crea un libro manualmente.
-
-    Body (JSON):
-        {
-            "title": "string (obligatorio)",
-            "author": "string (obligatorio)",
-            "publisher": "string",
-            "translator": "string",
-            "language": "string",
-            "isbn": "string",
-            "year_published": int,
-            "num_pages": int,
-            "format": "digital|physical",
-            "reading_status": "No leído|Leyendo|Leído",
-            "review": "string (markdown)"
-        }
-
-    Returns:
-        201: Libro creado exitosamente.
-        400: Datos inválidos o campos obligatorios faltantes.
+    POST /api/books — Crea un libro manualmente. Soporta subida de portada.
     """
     try:
-        data = request.get_json()
+        data = request.form.to_dict() if request.form else request.get_json() or {}
         if not data:
-            return jsonify({"error": "Se requiere un body JSON"}), 400
+            return jsonify({"error": "Se requieren datos para crear el libro"}), 400
 
-        result = create_book_manual(data)
+        cover_file = request.files.get("cover")
+        result = create_book_manual(data, cover_file)
         return jsonify(result), 201
 
     except ValueError as e:
@@ -206,21 +188,15 @@ def api_get_book(book_id):
 @main.route("/api/books/<int:book_id>", methods=["PUT"])
 def api_update_book(book_id):
     """
-    PUT /api/books/<id> — Actualiza los datos de un libro.
-
-    Body (JSON): Campos a actualizar (misma estructura que POST).
-
-    Returns:
-        200: Libro actualizado exitosamente.
-        400: Datos inválidos.
-        404: Libro no encontrado.
+    PUT /api/books/<id> — Actualiza los datos de un libro y su portada.
     """
     try:
-        data = request.get_json()
+        data = request.form.to_dict() if request.form else request.get_json() or {}
         if not data:
-            return jsonify({"error": "Se requiere un body JSON"}), 400
+            return jsonify({"error": "Se requieren datos para actualizar"}), 400
 
-        result = update_book_data(book_id, data)
+        cover_file = request.files.get("cover")
+        result = update_book_data(book_id, data, cover_file)
         return jsonify(result)
 
     except ValueError as e:
