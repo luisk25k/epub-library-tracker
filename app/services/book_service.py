@@ -17,8 +17,10 @@ import uuid
 import tempfile
 import urllib.request
 import concurrent.futures
+import csv
+import io
 from werkzeug.utils import secure_filename
-from app.models import create_book, get_book_by_id, update_book, delete_book
+from app.models import create_book, get_book_by_id, update_book, delete_book, check_book_exists
 from app.services.epub_parser import parse_epub, delete_cover_file
 from app.config import Config
 
@@ -409,3 +411,85 @@ def search_isbn(isbn: str) -> dict:
             pass
             
     return None
+
+
+# =============================================================================
+# CSV Import
+# =============================================================================
+
+def import_goodreads_csv(file_storage) -> dict:
+    """
+    Procesa un archivo CSV de Goodreads y carga los libros en la BD.
+    
+    Mapeo:
+    - Title ➔ Título
+    - Author ➔ Autor
+    - ISBN13 / ISBN ➔ ISBN
+    - Publisher ➔ Editorial
+    - My Rating ➔ Puntuación
+    - My Review ➔ Reseña
+    - Bookshelves ➔ Estatus de Lectura
+    
+    Retorna un diccionario con estadísticas de importación.
+    """
+    if not file_storage or not file_storage.filename.endswith('.csv'):
+        raise ValueError("El archivo debe ser un CSV válido.")
+
+    content = file_storage.read().decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(content))
+    
+    stats = {"imported": 0, "skipped": 0, "errors": 0}
+    
+    status_map = {
+        "read": "Leído",
+        "currently-reading": "Leyendo",
+        "to-read": "No leído"
+    }
+
+    for row in reader:
+        try:
+            title = row.get("Title", "").strip()
+            author = row.get("Author", "").strip()
+            if not title or not author:
+                stats["errors"] += 1
+                continue
+                
+            # Extraer ISBN (priorizar ISBN13)
+            isbn13 = row.get("ISBN13", "").strip().replace('=', '').replace('"', '')
+            isbn = row.get("ISBN", "").strip().replace('=', '').replace('"', '')
+            final_isbn = isbn13 if isbn13 else isbn
+            
+            # Verificar duplicados
+            if check_book_exists(isbn=final_isbn if final_isbn else None, title=title):
+                stats["skipped"] += 1
+                continue
+            
+            # Mapeo de rating
+            rating = 0
+            raw_rating = row.get("My Rating", "0")
+            if raw_rating.isdigit():
+                rating = int(raw_rating)
+            
+            # Mapeo de estatus de lectura
+            raw_shelves = row.get("Exclusive Shelf", "") or row.get("Bookshelves", "")
+            reading_status = status_map.get(raw_shelves.lower(), "No leído")
+            
+            book_data = {
+                "title": title,
+                "author": author,
+                "isbn": final_isbn if final_isbn else None,
+                "publisher": row.get("Publisher", "").strip(),
+                "rating": rating,
+                "review": row.get("My Review", "").strip(),
+                "reading_status": reading_status,
+                "format": "physical" # default
+            }
+            
+            create_book(book_data)
+            stats["imported"] += 1
+            
+        except Exception as e:
+            print(f"[CSV Import Error] {e}")
+            stats["errors"] += 1
+
+    return stats

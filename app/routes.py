@@ -22,7 +22,7 @@ Vistas HTML (Server-Side Rendering):
 from flask import Blueprint, request, jsonify, render_template
 from app.models import get_all_books, get_book_by_id
 from app.services.book_service import (
-    ingest_epub, create_book_manual, update_book_data, remove_book, search_isbn
+    ingest_epub, create_book_manual, update_book_data, remove_book, search_isbn, import_goodreads_csv
 )
 
 # =============================================================================
@@ -138,7 +138,29 @@ def api_create_book():
         cover_file = request.files.get("cover")
         result = create_book_manual(data, cover_file)
         return jsonify(result), 201
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Error interno: {str(e)}"}), 500
 
+
+@main.route("/api/books/import-csv", methods=["POST"])
+def api_import_csv():
+    """
+    POST /api/books/import-csv — Importa libros desde un CSV de Goodreads.
+    """
+    try:
+        if "csv_file" not in request.files:
+            return jsonify({"error": "No se envió el archivo CSV"}), 400
+            
+        file = request.files["csv_file"]
+        if file.filename == "":
+            return jsonify({"error": "Nombre de archivo vacío"}), 400
+            
+        stats = import_goodreads_csv(file)
+        return jsonify({"message": "Importación completada", "stats": stats}), 200
+        
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:

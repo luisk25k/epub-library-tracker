@@ -236,6 +236,31 @@ def get_book_by_id(book_id: int) -> dict:
         return dict(row) if row else None
 
 
+def check_book_exists(isbn: str = None, title: str = None) -> bool:
+    """
+    Verifica si un libro ya existe en la base de datos por ISBN o Título.
+    """
+    if not isbn and not title:
+        return False
+        
+    sql = "SELECT 1 FROM books WHERE "
+    conditions = []
+    params = []
+    
+    if isbn:
+        conditions.append("isbn = ?")
+        params.append(isbn)
+    if title:
+        conditions.append("title = ?")
+        params.append(title)
+        
+    sql += " OR ".join(conditions) + " LIMIT 1"
+    
+    with get_db() as db:
+        row = db.execute(sql, params).fetchone()
+        return row is not None
+
+
 def update_book(book_id: int, data: dict) -> bool:
     """
     Actualiza los campos de un libro existente.

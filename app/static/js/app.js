@@ -429,10 +429,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // =========================================================================
+    // CSV Import
+    // =========================================================================
+    const btnImportCsv = document.getElementById('btn-import-csv');
+    const csvFileInput = document.getElementById('csv-file-input');
+    
+    if (btnImportCsv && csvFileInput) {
+        btnImportCsv.addEventListener('click', () => {
+            csvFileInput.click();
+        });
+        
+        csvFileInput.addEventListener('change', async (e) => {
+            if (!e.target.files.length) return;
+            
+            const file = e.target.files[0];
+            if (!file.name.endsWith('.csv')) {
+                alert("Por favor selecciona un archivo .csv válido.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append("csv_file", file);
+            
+            const originalText = btnImportCsv.innerHTML;
+            btnImportCsv.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Importando...`;
+            btnImportCsv.disabled = true;
+            
+            try {
+                const res = await fetch('/api/books/import-csv', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: formData
+                });
+                
+                const result = await res.json();
+                if (res.ok) {
+                    alert(`Importación exitosa.\nImportados: ${result.stats.imported}\nOmitidos (duplicados): ${result.stats.skipped}\nErrores: ${result.stats.errors}`);
+                    window.location.reload();
+                } else {
+                    alert(result.error || "Ocurrió un error al importar");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error de conexión al importar.");
+            } finally {
+                btnImportCsv.innerHTML = originalText;
+                btnImportCsv.disabled = false;
+                csvFileInput.value = '';
+            }
+        });
+    }
 });
 
 // =============================================================================
-// Google Books API (ISBN Fetch)
+// Interacciones del DOM
 // =============================================================================
 
 /**
