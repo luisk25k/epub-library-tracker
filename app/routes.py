@@ -22,7 +22,7 @@ Vistas HTML (Server-Side Rendering):
 from flask import Blueprint, request, jsonify, render_template
 from app.models import get_all_books, get_book_by_id
 from app.services.book_service import (
-    ingest_epub, create_book_manual, update_book_data, remove_book
+    ingest_epub, create_book_manual, update_book_data, remove_book, search_isbn
 )
 
 # =============================================================================
@@ -139,6 +139,23 @@ def api_upload_epub():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"Error al procesar el ePub: {str(e)}"}), 500
+
+
+@main.route("/api/books/search", methods=["GET"])
+def api_search_isbn():
+    """
+    GET /api/books/search?isbn=XXX
+    Busca metadatos de un libro por ISBN a través del backend.
+    """
+    isbn = request.args.get("isbn", "").strip()
+    if not isbn:
+        return jsonify({"error": "Se requiere un ISBN válido"}), 400
+
+    result = search_isbn(isbn)
+    if result:
+        return jsonify(result), 200
+    else:
+        return jsonify({"error": "No se encontraron resultados en las bases de datos externas."}), 404
 
 
 @main.route("/api/books", methods=["GET"])

@@ -310,3 +310,90 @@ def remove_book(book_id: int) -> dict:
         "message": f"Libro '{deleted_book['title']}' eliminado exitosamente",
         "deleted_id": book_id
     }
+
+
+def search_isbn(isbn: str) -> dict:
+    """Busca metadatos por ISBN intentando varias estrategias en orden de coste."""
+    import json
+    import re
+    
+    isbn = isbn.replace('-', '').strip()
+    api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
+    
+    # ==========================================================
+    # Intento 1: OpenLibrary (100% Libre y sin cuotas)
+    # ==========================================================
+    ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&jscmd=data&format=json"
+    try:
+        req = urllib.request.Request(ol_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode())
+            book_key = f"ISBN:{isbn}"
+            if book_key in data:
+                book = data[book_key]
+                
+                # Extraer año
+                year = ""
+                if book.get("publish_date"):
+                    match = re.search(r'\d{4}', book["publish_date"])
+                    if match: year = match.group(0)
+                    
+                cover_url = ""
+                if book.get("cover"):
+                    cover_url = book["cover"].get("large") or book["cover"].get("medium", "")
+
+                return {
+                    "title": book.get("title", ""),
+                    "author": ", ".join([a.get("name", "") for a in book.get("authors", [])]),
+                    "publisher": ", ".join([p.get("name", "") for p in book.get("publishers", [])]),
+                    "year_published": year,
+                    "num_pages": book.get("number_of_pages", ""),
+                    "language": "", 
+                    "cover_url": cover_url
+                }
+    except Exception:
+        pass
+
+    # Helper interno para procesar respuesta de Google Books
+    def _fetch_google_books(query_url):
+        req = urllib.request.Request(query_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode())
+            if data.get("totalItems", 0) > 0 and data.get("items"):
+                vol = data["items"][0].get("volumeInfo", {})
+                return {
+                    "title": vol.get("title", ""),
+                    "author": ", ".join(vol.get("authors", [])),
+                    "publisher": vol.get("publisher", ""),
+                    "year_published": vol.get("publishedDate", "")[:4] if vol.get("publishedDate") else "",
+                    "num_pages": vol.get("pageCount", ""),
+                    "language": vol.get("language", ""),
+                    "cover_url": vol.get("imageLinks", {}).get("thumbnail", "").replace("http:", "https:")
+                }
+        return None
+
+    # ==========================================================
+    # Intento 2: Google Books API Pública (Sin API Key)
+    # ==========================================================
+    try:
+        res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}")
+        if res: return res
+        res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q={isbn}")
+        if res: return res
+    except Exception:
+        # Falló silenciosamente (probablemente Error 429 Límite de Cuota)
+        pass
+
+    # ==========================================================
+    # Intento 3: Google Books API Privada (Con API Key)
+    # ==========================================================
+    if api_key:
+        try:
+            res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={api_key}")
+            if res: return res
+            res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q={isbn}&key={api_key}")
+            if res: return res
+        except Exception:
+            pass
+            
+    return None

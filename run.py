@@ -6,6 +6,12 @@ Ejecuta la aplicación Flask en modo desarrollo.
 Uso: python run.py
 """
 
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
+
 from app import create_app
 
 app = create_app()
