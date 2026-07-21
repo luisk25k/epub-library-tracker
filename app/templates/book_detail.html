@@ -98,9 +98,21 @@
             <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-50 mb-2 leading-tight">
                 {{ book.title }}
             </h1>
-            <p class="text-xl md:text-2xl text-amber-500 font-medium mb-8">
-                por {{ book.author }}
-            </p>
+            <div class="flex items-center gap-4 mb-8">
+                <p class="text-xl md:text-2xl text-amber-500 font-medium">
+                    por {{ book.author }}
+                </p>
+                {% if book.rating and book.rating > 0 %}
+                <div class="flex items-center bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 shadow-inner shadow-black/20">
+                    <span class="text-amber-400 font-bold mr-2 text-sm">{{ book.rating }}.0</span>
+                    <div class="flex gap-0.5">
+                        {% for i in range(5) %}
+                        <svg class="w-4 h-4 {{ 'text-amber-400 fill-current' if i < book.rating else 'text-slate-600 fill-current' }}" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
 
             <!-- Metadata Principal (Grid) -->
             <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-6 mb-8">

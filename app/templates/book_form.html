@@ -52,6 +52,7 @@
 
     <!-- Formulario Principal -->
     <form onsubmit="submitBookForm(event, {{ book.id if editing else 'null' }})" class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg shadow-black/20">
+        <input type="hidden" id="cover_url" name="cover_url">
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Título (Obligatorio) -->
@@ -97,9 +98,18 @@
             <!-- ISBN -->
             <div>
                 <label for="isbn" class="block text-sm font-medium text-slate-300 mb-1">ISBN</label>
-                <input type="text" id="isbn" name="isbn"
-                       value="{{ book.isbn if book else '' }}"
-                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                <div class="flex gap-2">
+                    <input type="text" id="isbn" name="isbn" placeholder="Ej. 978..."
+                           value="{{ book.isbn if book else '' }}"
+                           class="flex-1 px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                    <button type="button" onclick="fetchGoogleBooks()"
+                            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg transition-colors border border-slate-600 flex items-center gap-2"
+                            title="Buscar datos en Google Books por ISBN">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        Buscar
+                    </button>
+                </div>
+                <p id="isbn-help" class="text-xs text-slate-500 mt-1 hidden"></p>
             </div>
 
             <!-- Año de Publicación -->
@@ -168,6 +178,22 @@
                 </div>
             </div>
 
+            <!-- Valoración (Rating) -->
+            <div class="col-span-1 md:col-span-2" id="rating-container" style="display: {{ 'block' if book and book.reading_status == 'Leído' else 'none' }};">
+                <label class="block text-sm font-medium text-slate-300 mb-1">Calificación (1-5)</label>
+                <div class="flex gap-1 max-w-sm" id="star-rating">
+                    <input type="radio" name="rating" value="0" class="hidden" id="rating-0" {{ 'checked' if not book or book.rating == 0 else '' }}>
+                    {% for i in range(1, 6) %}
+                    <label class="cursor-pointer p-1">
+                        <input type="radio" name="rating" value="{{ i }}" class="sr-only star-radio"
+                               {{ 'checked' if book and book.rating == i else '' }}>
+                        <svg class="w-8 h-8 star-icon {{ 'text-amber-400' if book and book.rating >= i else 'text-slate-600' }} fill-current transition-colors" viewBox="0 0 24 24" data-index="{{ i }}"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Solo disponible para libros leídos.</p>
+            </div>
+
             <!-- Notas / Reseña (Markdown) -->
             <div class="col-span-1 md:col-span-2">
                 <div class="flex items-center justify-between mb-1">
@@ -209,4 +235,82 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Mostrar/Ocultar Rating según el estatus
+    const statusRadios = document.querySelectorAll('input[name="reading_status"]');
+    const ratingContainer = document.getElementById('rating-container');
+    const rating0 = document.getElementById('rating-0');
+    
+    function updateRatingVisibility() {
+        const checkedStatus = document.querySelector('input[name="reading_status"]:checked');
+        if (checkedStatus && checkedStatus.value === 'Leído') {
+            ratingContainer.style.display = 'block';
+        } else {
+            ratingContainer.style.display = 'none';
+            if (rating0) rating0.checked = true;
+            updateStarsVisuals(0);
+        }
+    }
+    
+    statusRadios.forEach(radio => {
+        radio.addEventListener('change', updateRatingVisibility);
+    });
+
+    // 2. Estrellas Interactivas
+    const starContainer = document.getElementById('star-rating');
+    if (!starContainer) return;
+    
+    const stars = starContainer.querySelectorAll('.star-icon');
+    const starRadios = starContainer.querySelectorAll('.star-radio');
+    
+    function updateStarsVisuals(ratingValue) {
+        stars.forEach(star => {
+            if (parseInt(star.dataset.index) <= ratingValue) {
+                star.classList.remove('text-slate-600');
+                star.classList.add('text-amber-400');
+            } else {
+                star.classList.remove('text-amber-400');
+                star.classList.add('text-slate-600');
+            }
+        });
+    }
+
+    starRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateStarsVisuals(parseInt(e.target.value));
+        });
+    });
+
+    stars.forEach(star => {
+        star.addEventListener('mouseenter', (e) => {
+            const hoverValue = parseInt(e.target.dataset.index);
+            stars.forEach(s => {
+                if (parseInt(s.dataset.index) <= hoverValue) {
+                    s.classList.add('text-amber-300');
+                } else {
+                    s.classList.remove('text-amber-300');
+                }
+            });
+        });
+        star.addEventListener('mouseleave', () => {
+            const checkedRadio = starContainer.querySelector('.star-radio:checked');
+            const currentValue = checkedRadio ? parseInt(checkedRadio.value) : 0;
+            stars.forEach(s => {
+                s.classList.remove('text-amber-300');
+                if (parseInt(s.dataset.index) <= currentValue) {
+                    s.classList.add('text-amber-400');
+                    s.classList.remove('text-slate-600');
+                } else {
+                    s.classList.remove('text-amber-400');
+                    s.classList.add('text-slate-600');
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

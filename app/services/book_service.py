@@ -15,6 +15,7 @@ Responsabilidades:
 import os
 import uuid
 import tempfile
+import urllib.request
 from werkzeug.utils import secure_filename
 from app.models import create_book, get_book_by_id, update_book, delete_book
 from app.services.epub_parser import parse_epub, delete_cover_file
@@ -31,7 +32,7 @@ MAX_EPUB_SIZE = 50 * 1024 * 1024  # 50 MB en bytes
 VALID_BOOK_FIELDS = {
     "title", "author", "publisher", "translator", "language",
     "isbn", "year_published", "num_pages", "format",
-    "reading_status", "cover_path", "review"
+    "reading_status", "rating", "cover_path", "review"
 }
 
 # Valores válidos para reading_status
@@ -60,6 +61,25 @@ def save_uploaded_cover(file_storage) -> str:
     unique_name = f"{uuid.uuid4().hex}{ext}"
     save_path = os.path.join(COVERS_DIR, unique_name)
     file_storage.save(save_path)
+    return f"uploads/covers/{unique_name}"
+
+
+def download_external_cover(url: str) -> str:
+    """
+    Descarga una imagen de portada desde una URL externa (ej. Google Books)
+    y la guarda localmente para preservar la privacidad 100% local.
+    """
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
+    os.makedirs(COVERS_DIR, exist_ok=True)
+    
+    unique_name = f"{uuid.uuid4().hex}.jpg"
+    save_path = os.path.join(COVERS_DIR, unique_name)
+    
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response, open(save_path, 'wb') as out_file:
+        out_file.write(response.read())
+        
     return f"uploads/covers/{unique_name}"
 
 
@@ -149,9 +169,15 @@ def create_book_manual(data: dict, cover_file=None) -> dict:
     # Filtrar solo campos válidos
     clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS and str(v).strip()}
 
-    # Guardar portada si se subió una
+    # Guardar portada si se subió una o si hay URL externa
+    cover_url = data.get("cover_url")
     if cover_file and cover_file.filename:
         clean_data["cover_path"] = save_uploaded_cover(cover_file)
+    elif cover_url:
+        try:
+            clean_data["cover_path"] = download_external_cover(cover_url)
+        except Exception:
+            pass # Ignorar fallos de descarga externa
 
     # Convertir year_published a entero si se proporciona
     if "year_published" in clean_data:
@@ -166,6 +192,15 @@ def create_book_manual(data: dict, cover_file=None) -> dict:
             clean_data["num_pages"] = int(clean_data["num_pages"])
         except (ValueError, TypeError):
             clean_data.pop("num_pages", None)
+            
+    # Convertir rating a entero si se proporciona
+    if "rating" in clean_data:
+        try:
+            val = int(clean_data["rating"])
+            if val < 0 or val > 5: raise ValueError
+            clean_data["rating"] = val
+        except (ValueError, TypeError):
+            clean_data.pop("rating", None)
 
     book_id = create_book(clean_data)
     return {"id": book_id, "message": "Libro creado exitosamente"}
@@ -202,13 +237,19 @@ def update_book_data(book_id: int, data: dict, cover_file=None) -> dict:
     # Filtrar solo campos válidos
     clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS}
     
-    # Procesar portada si se subió una
+    # Procesar portada si se subió una o hay URL
+    cover_url = data.get("cover_url")
     if cover_file and cover_file.filename:
-        # Eliminar portada anterior si existe
         if existing.get("cover_path"):
             delete_cover_file(existing["cover_path"])
-        # Guardar la nueva
         clean_data["cover_path"] = save_uploaded_cover(cover_file)
+    elif cover_url:
+        try:
+            if existing.get("cover_path"):
+                delete_cover_file(existing["cover_path"])
+            clean_data["cover_path"] = download_external_cover(cover_url)
+        except Exception:
+            pass
 
     # Convertir tipos numéricos
     if "year_published" in clean_data:
@@ -224,6 +265,18 @@ def update_book_data(book_id: int, data: dict, cover_file=None) -> dict:
             clean_data["num_pages"] = int(val) if str(val).strip() else None
         except (ValueError, TypeError):
             clean_data.pop("num_pages", None)
+            
+    if "rating" in clean_data:
+        try:
+            val = clean_data["rating"]
+            if str(val).strip():
+                int_val = int(val)
+                if int_val < 0 or int_val > 5: raise ValueError
+                clean_data["rating"] = int_val
+            else:
+                clean_data["rating"] = 0
+        except (ValueError, TypeError):
+            clean_data.pop("rating", None)
 
     success = update_book(book_id, clean_data)
     if success:

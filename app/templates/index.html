@@ -97,14 +97,26 @@
 
         <!-- Información del libro -->
         <div class="mt-3 px-1">
-            <!-- Status badge -->
-            {% if book.reading_status == 'No leído' %}
-            <span class="status-badge status-badge--not-read">No leído</span>
-            {% elif book.reading_status == 'Leyendo' %}
-            <span class="status-badge status-badge--reading">Leyendo</span>
-            {% elif book.reading_status == 'Leído' %}
-            <span class="status-badge status-badge--read">Leído</span>
-            {% endif %}
+            <div class="flex justify-between items-start">
+                <!-- Status badge -->
+                <div>
+                    {% if book.reading_status == 'No leído' %}
+                    <span class="status-badge status-badge--not-read">No leído</span>
+                    {% elif book.reading_status == 'Leyendo' %}
+                    <span class="status-badge status-badge--reading">Leyendo</span>
+                    {% elif book.reading_status == 'Leído' %}
+                    <span class="status-badge status-badge--read">Leído</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Rating -->
+                {% if book.rating and book.rating > 0 %}
+                <div class="flex items-center bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
+                    <span class="text-xs font-bold text-amber-400 mr-1">{{ book.rating }}</span>
+                    <svg class="w-3 h-3 text-amber-400 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </div>
+                {% endif %}
+            </div>
 
             <!-- Título -->
             <h3 class="text-sm font-semibold text-slate-200 mt-2 line-clamp-2 leading-tight group-hover:text-amber-400 transition-colors duration-200">

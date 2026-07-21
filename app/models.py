@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS books (
     num_pages       INTEGER DEFAULT NULL,
     format          TEXT    DEFAULT 'digital' CHECK(format IN ('digital', 'physical')),
     reading_status  TEXT    DEFAULT 'No leído' CHECK(reading_status IN ('No leído', 'Leyendo', 'Leído')),
+    rating          INTEGER NOT NULL DEFAULT 0 CHECK(rating >= 0 AND rating <= 5),
     cover_path      TEXT    DEFAULT NULL,
     review          TEXT    DEFAULT NULL,
     created_at      TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime')),
@@ -164,7 +165,7 @@ def create_book(data: dict) -> int:
     columns = [
         "title", "author", "publisher", "translator", "language",
         "isbn", "year_published", "num_pages", "format",
-        "reading_status", "cover_path", "review"
+        "reading_status", "rating", "cover_path", "review"
     ]
 
     # Filtrar solo las columnas presentes en el diccionario de datos

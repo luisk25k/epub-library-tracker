@@ -337,3 +337,106 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar preview de Markdown si existe el textarea
     initMarkdownPreview();
 });
+
+// =============================================================================
+// Google Books API (ISBN Fetch)
+// =============================================================================
+
+/**
+ * Busca metadatos de un libro por ISBN intentando primero con Google Books,
+ * y usando OpenLibrary como respaldo en caso de fallo o falta de resultados.
+ */
+async function fetchGoogleBooks() {
+    const isbnInput = document.getElementById('isbn');
+    const helpText = document.getElementById('isbn-help');
+    if (!isbnInput || !helpText) return;
+
+    let isbn = isbnInput.value.trim().replace(/-/g, '');
+    if (!isbn) {
+        showToast('Por favor, ingresa un ISBN primero', 'error');
+        return;
+    }
+
+    helpText.classList.remove('hidden', 'text-red-500', 'text-green-500');
+    helpText.classList.add('text-amber-500');
+    helpText.textContent = 'Buscando metadatos...';
+
+    try {
+        // Intento 1: Google Books API
+        const gbResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+        if (gbResponse.ok) {
+            const gbData = await gbResponse.json();
+            if (gbData.totalItems > 0 && gbData.items && gbData.items.length > 0) {
+                const volumeInfo = gbData.items[0].volumeInfo;
+                if (volumeInfo.title) document.getElementById('title').value = volumeInfo.title;
+                if (volumeInfo.authors && volumeInfo.authors.length > 0) {
+                    document.getElementById('author').value = volumeInfo.authors.join(', ');
+                }
+                if (volumeInfo.publisher) document.getElementById('publisher').value = volumeInfo.publisher;
+                if (volumeInfo.publishedDate) {
+                    document.getElementById('year_published').value = volumeInfo.publishedDate.substring(0, 4);
+                }
+                if (volumeInfo.pageCount) document.getElementById('num_pages').value = volumeInfo.pageCount;
+                if (volumeInfo.language) document.getElementById('language').value = volumeInfo.language;
+                if (volumeInfo.imageLinks && volumeInfo.imageLinks.thumbnail) {
+                    document.getElementById('cover_url').value = volumeInfo.imageLinks.thumbnail.replace('http:', 'https:');
+                }
+                
+                helpText.classList.remove('text-amber-500');
+                helpText.classList.add('text-green-500');
+                helpText.textContent = '¡Datos encontrados en Google Books!';
+                showToast('Metadatos autocompletados', 'success');
+                return;
+            }
+        }
+        
+        // Intento 2: OpenLibrary API (Fallback)
+        helpText.textContent = 'Buscando en OpenLibrary...';
+        const olResponse = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=data&format=json`);
+        if (olResponse.ok) {
+            const olData = await olResponse.json();
+            const bookKey = `ISBN:${isbn}`;
+            if (olData[bookKey]) {
+                const bookData = olData[bookKey];
+                if (bookData.title) document.getElementById('title').value = bookData.title;
+                if (bookData.authors && bookData.authors.length > 0) {
+                    document.getElementById('author').value = bookData.authors.map(a => a.name).join(', ');
+                }
+                if (bookData.publishers && bookData.publishers.length > 0) {
+                    document.getElementById('publisher').value = bookData.publishers.map(p => p.name).join(', ');
+                }
+                if (bookData.publish_date) {
+                    const yearMatch = bookData.publish_date.match(/\d{4}/);
+                    if (yearMatch) document.getElementById('year_published').value = yearMatch[0];
+                }
+                if (bookData.number_of_pages) {
+                    document.getElementById('num_pages').value = bookData.number_of_pages;
+                }
+                if (bookData.cover && bookData.cover.large) {
+                    document.getElementById('cover_url').value = bookData.cover.large;
+                } else if (bookData.cover && bookData.cover.medium) {
+                    document.getElementById('cover_url').value = bookData.cover.medium;
+                }
+                
+                helpText.classList.remove('text-amber-500');
+                helpText.classList.add('text-green-500');
+                helpText.textContent = '¡Datos encontrados en OpenLibrary!';
+                showToast('Metadatos autocompletados', 'success');
+                return;
+            }
+        }
+        
+        // Si ambos fallaron
+        helpText.classList.remove('text-amber-500');
+        helpText.classList.add('text-red-500');
+        helpText.textContent = 'No se encontraron resultados en ninguna base de datos.';
+        showToast('No se encontraron resultados', 'error');
+        
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        helpText.classList.remove('text-amber-500');
+        helpText.classList.add('text-red-500');
+        helpText.textContent = 'Error de red al consultar las APIs.';
+        showToast('Error de conexión', 'error');
+    }
+}
