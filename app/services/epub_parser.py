@@ -28,7 +28,7 @@ from ebooklib import epub
 
 # Directorio donde se guardan las imágenes de portada extraídas
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COVERS_DIR = os.path.join(BASE_DIR, "app", "static", "uploads", "covers")
+COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
 
 
 # =============================================================================
@@ -251,7 +251,7 @@ def delete_cover_file(cover_path: str) -> bool:
         return False
 
     # Construir la ruta absoluta desde la ruta relativa
-    full_path = os.path.join(BASE_DIR, "app", "static", cover_path)
+    full_path = os.path.join(BASE_DIR, "static", cover_path.replace("uploads/covers/", "uploads/covers/"))
 
     try:
         if os.path.exists(full_path):
