@@ -28,20 +28,20 @@ Es ideal para lectores ávidos que buscan un lugar propio para el análisis crí
 - **⚡ Autocompletado por ISBN:** Añade libros rápidamente ingresando su ISBN. El sistema consulta automáticamente bases de datos libres (OpenLibrary) y comerciales (Google Books) para autocompletar toda la información y descargar la portada.
 - **📥 Importación Masiva (Goodreads):** Si vienes de Goodreads, puedes subir directamente tu archivo `.csv` exportado. El sistema mapeará y migrará tu biblioteca completa (incluyendo rating y estatus), omitiendo duplicados.
 - **🗃️ CRUD Completo y Seguro:** Crea, lee, actualiza y elimina registros literarios con un enfoque riguroso. Toda la aplicación está fortificada contra ataques comunes (CSRF, XSS y Path Traversal).
-- **📊 Estado de Lectura:** Clasifica fácilmente tu colección visualmente con estados de lectura: *No leído, Leyendo, Leído*.
+- **📊 Estado de Lectura:** Clasifica fácilmente tu colección visualmente con estados de lectura: _No leído, Leyendo, Leído_.
 - **📝 Editor de Reseñas Markdown:** Soporte nativo de Markdown para escribir reseñas extensas, análisis crítico y notas filológicas, renderizadas dinámicamente con una vista previa de doble panel y sanitizadas con DOMPurify.
 - **🎨 Interfaz Moderna y Óptima:** Un diseño UI/UX limpio y minimalista optimizado mediante TailwindCSS en modo oscuro. Incluye paginación dinámica (carga bajo demanda) para garantizar un rendimiento instantáneo incluso con miles de libros.
 
 ## 🛠️ Stack Tecnológico
 
-| Capa | Tecnología | Propósito |
-|---|---|---|
-| **Backend** | Python 3.10+ / Flask | Servidor web eficiente y minimalista. |
-| **Base de Datos** | SQLite 3 | Base de datos portable en un solo archivo (WAL mode). |
-| **Seguridad** | Flask-WTF / DOMPurify | Prevención integral de vulnerabilidades (CSRF y XSS). |
-| **Frontend** | HTML5, TailwindCSS, Vanilla JS | UI responsiva y rápida sin builds pesados de JS. |
-| **ePub Parser** | ebooklib / lxml | Lectura y extracción estructurada de archivos ePub. |
-| **Markdown** | marked.js | Renderizado de Markdown en el lado del cliente. |
+| Capa              | Tecnología                     | Propósito                                             |
+| ----------------- | ------------------------------ | ----------------------------------------------------- |
+| **Backend**       | Python 3.10+ / Flask           | Servidor web eficiente y minimalista.                 |
+| **Base de Datos** | SQLite 3                       | Base de datos portable en un solo archivo (WAL mode). |
+| **Seguridad**     | Flask-WTF / DOMPurify          | Prevención integral de vulnerabilidades (CSRF y XSS). |
+| **Frontend**      | HTML5, TailwindCSS, Vanilla JS | UI responsiva y rápida sin builds pesados de JS.      |
+| **ePub Parser**   | ebooklib / lxml                | Lectura y extracción estructurada de archivos ePub.   |
+| **Markdown**      | marked.js                      | Renderizado de Markdown en el lado del cliente.       |
 
 ## 🚀 Instalación y Uso
 
@@ -49,7 +49,7 @@ Asegúrate de contar con **Python 3.10 o superior** instalado en tu sistema. El 
 
 ```bash
 # 1. Clonar el repositorio
-git clone <tu-repositorio>
+git clone https://github.com/luisk25k/epub-library-tracker.git
 cd epub-library-tracker
 
 # 2. Crear un entorno virtual
@@ -67,11 +67,12 @@ pip install -r requirements.txt
 # 5. Iniciar la aplicación
 python run.py
 ```
+
 > La aplicación estará disponible localmente en tu navegador en: **`http://localhost:5000`**
 
 ## 📂 Estructura del Proyecto
 
-El sistema está diseñado de forma modular utilizando el patrón de *Application Factory* de Flask.
+El sistema está diseñado de forma modular utilizando el patrón de _Application Factory_ de Flask.
 
 ```text
 epub-library-tracker/
@@ -81,7 +82,7 @@ epub-library-tracker/
 │   ├── routes.py              # Definición de endpoints de API y renderizado de Vistas
 │   ├── services/
 │   │   ├── book_service.py    # Lógica de negocio e integración entre modelos y parser
-│   │   └── epub_parser.py     # Lógica robusta de parsing de Dublin Core y OPF 
+│   │   └── epub_parser.py     # Lógica robusta de parsing de Dublin Core y OPF
 │   ├── static/
 │   │   ├── css/ & js/         # Estilos y comportamiento cliente
 │   │   └── uploads/covers/    # Almacenamiento local de portadas extraídas
@@ -96,11 +97,13 @@ epub-library-tracker/
 ## 🛡️ Privacidad y Seguridad
 
 Este proyecto fue construido bajo la premisa absoluta de **privacidad por diseño**:
+
 - **Cero Telemetría Oculta:** Sin scripts de seguimiento ni analíticas integradas.
 - **100% Local:** Tus datos, metadatos y reseñas se almacenan exclusivamente en tu máquina. Las interacciones con APIs externas (OpenLibrary, Google Books) ocurren **únicamente** cuando decides de manera manual y activa buscar un ISBN para autocompletar un libro, preservando el aislamiento del resto de tu colección.
 - **Portabilidad:** Para realizar copias de seguridad de tu biblioteca completa, simplemente copia el archivo `database/library.db` y la carpeta `app/static/uploads/covers/`.
 
 ---
+
 <div align="center">
   <i>Construido con simplicidad y rigor para los amantes de los libros.</i>
 </div>
