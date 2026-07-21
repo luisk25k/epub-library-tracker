@@ -2,14 +2,15 @@
 """
 Personal Library Tracker — Application Factory
 =================================================
-Configura la instancia de Flask, registra el Blueprint de rutas
-e inicializa la base de datos al arranque.
+Configura la instancia de Flask y registra el Blueprint de rutas.
 """
 
 import os
 from flask import Flask
-from app.models import init_db
+from flask_wtf.csrf import CSRFProtect
+from app.config import Config, BASE_DIR
 
+csrf = CSRFProtect()
 
 def create_app():
     """
@@ -18,21 +19,21 @@ def create_app():
     Returns:
         Flask: Aplicación Flask configurada y lista para ejecutarse.
     """
-    # Determinar la ruta base del proyecto
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
     app = Flask(
         __name__,
-        static_folder=os.path.join(base_dir, "app", "static"),
-        template_folder=os.path.join(base_dir, "app", "templates"),
+        static_folder=os.path.join(BASE_DIR, "app", "static"),
+        template_folder=os.path.join(BASE_DIR, "app", "templates"),
     )
 
     # --- Configuración ---
-    app.config["SECRET_KEY"] = "personal-library-tracker-local-only"
-    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB límite de upload
+    app.config.from_object(Config)
+    
+    # --- Seguridad ---
+    csrf.init_app(app)
 
-    # --- Inicializar Base de Datos ---
-    init_db()
+    # --- Base de Datos ---
+    from app.models import close_connection
+    app.teardown_appcontext(close_connection)
 
     # --- Registrar Rutas (Blueprint) ---
     from app.routes import main

@@ -46,13 +46,43 @@ def index():
     status = request.args.get("status", "").strip()
     sort_by = request.args.get("sort_by", "created_at")
     sort_dir = request.args.get("sort_dir", "desc")
+    
+    limit = 20
+    try:
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        offset = 0
 
     books = get_all_books(
         search=search if search else None,
         status=status if status else None,
         sort_by=sort_by,
-        sort_dir=sort_dir
+        sort_dir=sort_dir,
+        limit=limit,
+        offset=offset
     )
+    
+    has_more = len(books) == limit
+    partial = request.args.get("partial", "false").lower() == "true"
+
+    if partial:
+        # Si es una petición parcial (AJAX load more), renderizar sólo las cards y el botón
+        html = ""
+        for book in books:
+            # Aquí podríamos usar render_template_string pero para mantenerlo
+            # simple delegamos al JS extraer las .book-card del HTML retornado
+            pass
+        return render_template(
+            "index.html",
+            books=books,
+            search=search,
+            status=status,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            offset=offset,
+            limit=limit,
+            has_more=has_more
+        )
 
     return render_template(
         "index.html",
@@ -60,7 +90,10 @@ def index():
         search=search,
         status=status,
         sort_by=sort_by,
-        sort_dir=sort_dir
+        sort_dir=sort_dir,
+        offset=offset,
+        limit=limit,
+        has_more=has_more
     )
 
 

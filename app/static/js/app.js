@@ -10,6 +10,15 @@
  */
 
 // =============================================================================
+// CSRF Token Helper
+// =============================================================================
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+// =============================================================================
 // Toast Notifications
 // =============================================================================
 
@@ -117,7 +126,10 @@ function handleEscapeClose(e) {
 async function executeDelete(bookId) {
     try {
         const response = await fetch(`/api/books/${bookId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
         });
 
         const data = await response.json();
@@ -170,6 +182,9 @@ async function uploadEpub(fileInput) {
     try {
         const response = await fetch('/api/books/upload', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
             body: formData
         });
 
@@ -219,6 +234,9 @@ async function submitBookForm(event, bookId = null) {
     try {
         const response = await fetch(url, {
             method: method,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
             // Al usar FormData como body, fetch configura automáticamente 
             // Content-Type a multipart/form-data con el boundary correcto
             body: formData
@@ -271,7 +289,8 @@ function initMarkdownPreview() {
         if (markdown.trim() === '') {
             preview.innerHTML = '<p class="text-slate-500 italic">La vista previa aparecerá aquí...</p>';
         } else {
-            preview.innerHTML = marked.parse(markdown);
+            const rawHtml = marked.parse(markdown);
+            preview.innerHTML = DOMPurify.sanitize(rawHtml);
         }
     }
 
@@ -323,7 +342,12 @@ function switchTab(tab) {
         const preview = document.getElementById('review-preview');
         if (textarea && preview && typeof marked !== 'undefined') {
             const md = textarea.value.trim();
-            preview.innerHTML = md ? marked.parse(md) : '<p class="text-slate-500 italic">La vista previa aparecerá aquí...</p>';
+            if (md) {
+                const rawHtml = marked.parse(md);
+                preview.innerHTML = DOMPurify.sanitize(rawHtml);
+            } else {
+                preview.innerHTML = '<p class="text-slate-500 italic">La vista previa aparecerá aquí...</p>';
+            }
         }
     }
 }
@@ -336,6 +360,75 @@ function switchTab(tab) {
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar preview de Markdown si existe el textarea
     initMarkdownPreview();
+
+    // Event Listeners para el formulario de filtros (Autosubmit)
+    const filterForm = document.getElementById('filter-form');
+    if (filterForm) {
+        ['status-filter', 'sort-select', 'sort-dir-select'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => filterForm.submit());
+            }
+        });
+    }
+
+    // Event Listener para el botón Cargar Más
+    const btnLoadMore = document.getElementById('btn-load-more');
+    if (btnLoadMore) {
+        btnLoadMore.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const btn = e.target;
+            const offset = btn.getAttribute('data-offset');
+            
+            // Recolectar filtros actuales
+            const search = document.getElementById('search-input')?.value || '';
+            const status = document.getElementById('status-filter')?.value || '';
+            const sortBy = document.getElementById('sort-select')?.value || 'created_at';
+            const sortDir = document.getElementById('sort-dir-select')?.value || 'desc';
+
+            btn.disabled = true;
+            btn.textContent = 'Cargando...';
+
+            try {
+                // Hacer petición a la API de paginación (que devuelve HTML parcial o JSON)
+                const queryParams = new URLSearchParams({ search, status, sort_by: sortBy, sort_dir: sortDir, offset });
+                const res = await fetch(`/?${queryParams.toString()}&partial=true`);
+                if (res.ok) {
+                    const html = await res.text();
+                    
+                    if (html.trim()) {
+                        // Crear un contenedor temporal para parsear el HTML
+                        const temp = document.createElement('div');
+                        temp.innerHTML = html;
+                        
+                        // Extraer los libros
+                        const grid = document.getElementById('books-grid');
+                        const newCards = temp.querySelectorAll('.book-card');
+                        newCards.forEach(card => grid.appendChild(card));
+                        
+                        // Actualizar o eliminar el botón "Cargar Más"
+                        const newBtn = temp.querySelector('#btn-load-more');
+                        if (newBtn) {
+                            btn.setAttribute('data-offset', newBtn.getAttribute('data-offset'));
+                            btn.disabled = false;
+                            btn.textContent = 'Cargar más libros...';
+                        } else {
+                            btn.remove(); // No hay más libros
+                        }
+                    } else {
+                        btn.remove();
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Error. Intentar de nuevo';
+                }
+            } catch (error) {
+                console.error(error);
+                btn.disabled = false;
+                btn.textContent = 'Error de conexión';
+            }
+        });
+    }
 });
 
 // =============================================================================

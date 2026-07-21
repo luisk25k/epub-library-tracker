@@ -20,15 +20,7 @@ import os
 import uuid
 import ebooklib
 from ebooklib import epub
-
-
-# =============================================================================
-# Ruta de almacenamiento de portadas
-# =============================================================================
-
-# Directorio donde se guardan las imágenes de portada extraídas
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
+from app.config import Config
 
 
 # =============================================================================
@@ -89,18 +81,12 @@ def _extract_isbn(book: epub.EpubBook) -> str:
 # Extracción de Imagen de Portada
 # =============================================================================
 
-def _extract_cover_image(book: epub.EpubBook, epub_filename: str) -> str:
+def _extract_cover_image(book: epub.EpubBook) -> str:
     """
-    Extrae la imagen de portada del ePub y la guarda en el directorio de covers.
-
-    Estrategia de detección (en orden de prioridad):
-    1. Item con propiedad 'cover-image' en el manifiesto.
-    2. Metadato 'cover' que referencia un item del manifiesto.
-    3. Primer item de tipo imagen encontrado en el ePub.
+    Busca la imagen de portada dentro del ePub utilizando 3 estrategias.
 
     Args:
         book:          Objeto EpubBook cargado.
-        epub_filename: Nombre original del archivo ePub (para generar nombre único).
 
     Returns:
         str: Ruta relativa de la imagen guardada (relativa a static/),
@@ -159,7 +145,7 @@ def _save_cover_image(item) -> str:
         str: Ruta relativa de la imagen guardada (para almacenar en BD).
     """
     # Asegurar que el directorio de portadas existe
-    os.makedirs(COVERS_DIR, exist_ok=True)
+    os.makedirs(Config.COVERS_DIR, exist_ok=True)
 
     # Determinar extensión del archivo de imagen
     original_name = item.get_name()
@@ -178,7 +164,7 @@ def _save_cover_image(item) -> str:
 
     # Generar nombre único con UUID
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    save_path = os.path.join(COVERS_DIR, unique_name)
+    save_path = os.path.join(Config.COVERS_DIR, unique_name)
 
     # Escribir los bytes de la imagen
     with open(save_path, "wb") as f:
@@ -230,7 +216,7 @@ def parse_epub(file_path: str) -> dict:
         "publisher": _get_metadata_value(book, "publisher"),
         "language": _get_metadata_value(book, "language"),
         "isbn": _extract_isbn(book),
-        "cover_path": _extract_cover_image(book, epub_filename),
+        "cover_path": _extract_cover_image(book),
         "format": "digital",  # Un ePub siempre es formato digital
     }
 
@@ -250,8 +236,9 @@ def delete_cover_file(cover_path: str) -> bool:
     if not cover_path:
         return False
 
-    # Construir la ruta absoluta desde la ruta relativa
-    full_path = os.path.join(BASE_DIR, "static", cover_path.replace("uploads/covers/", "uploads/covers/"))
+    # Construir la ruta absoluta saneando el path para evitar Path Traversal
+    safe_filename = os.path.basename(cover_path)
+    full_path = os.path.join(Config.COVERS_DIR, safe_filename)
 
     try:
         if os.path.exists(full_path):

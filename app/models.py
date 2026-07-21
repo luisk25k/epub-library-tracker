@@ -15,15 +15,12 @@ Decisiones de diseño:
 import os
 import sqlite3
 from contextlib import contextmanager
+from flask import g
+from app.config import Config
 
 # =============================================================================
 # Configuración de la Base de Datos
 # =============================================================================
-
-# Ruta absoluta al archivo de la BD, relativa a la raíz del proyecto
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_DIR = os.path.join(BASE_DIR, "database")
-DATABASE_PATH = os.path.join(DATABASE_DIR, "library.db")
 
 # DDL: Definición del esquema de la tabla principal 'books'
 # Incluye CHECK constraints para validar 'format' y 'reading_status'
@@ -71,34 +68,34 @@ INDEXES_SQL = [
 # Conexión a la Base de Datos
 # =============================================================================
 
-def get_connection():
+def get_connection() -> sqlite3.Connection:
     """
-    Crea y retorna una conexión a la base de datos SQLite.
-    Configura row_factory para acceso por nombre de columna y
-    habilita foreign keys y WAL journal mode.
-
-    Returns:
-        sqlite3.Connection: Conexión configurada a la BD.
+    Retorna la conexión a la base de datos de la petición actual o crea una nueva si no existe.
+    Configura ROWFactory para retornar diccionarios.
     """
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row          # Acceso dict-like a las filas
-    conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
-    conn.execute("PRAGMA foreign_keys=ON")   # Integridad referencial
-    return conn
+    if 'db_conn' not in g:
+        g.db_conn = sqlite3.connect(Config.DATABASE_PATH)
+        g.db_conn.row_factory = sqlite3.Row
+        
+        # Activar soporte de llaves foráneas y modo WAL para mejor concurrencia
+        g.db_conn.execute("PRAGMA foreign_keys = ON")
+        g.db_conn.execute("PRAGMA journal_mode = WAL")
+        
+    return g.db_conn
 
+def close_connection(e=None):
+    """
+    Cierra la conexión de la base de datos al finalizar la petición.
+    (Debe ser registrada en app/__init__.py con teardown_appcontext)
+    """
+    conn = g.pop('db_conn', None)
+    if conn is not None:
+        conn.close()
 
 @contextmanager
 def get_db():
     """
-    Context manager que provee una conexión a la BD.
-    Garantiza commit en caso de éxito y rollback + close en caso de error.
-
-    Yields:
-        sqlite3.Connection: Conexión activa a la BD.
-
-    Ejemplo de uso:
-        with get_db() as db:
-            db.execute("SELECT * FROM books")
+    Context manager para transacciones (commit automático o rollback).
     """
     conn = get_connection()
     try:
@@ -107,8 +104,6 @@ def get_db():
     except Exception:
         conn.rollback()
         raise
-    finally:
-        conn.close()
 
 
 # =============================================================================
@@ -117,16 +112,9 @@ def get_db():
 
 def init_db():
     """
-    Inicializa la base de datos: crea el directorio si no existe,
-    ejecuta el DDL de la tabla 'books', el trigger de updated_at
-    y los índices de búsqueda.
-
-    Esta función es idempotente (seguro ejecutar múltiples veces)
-    gracias al uso de IF NOT EXISTS en todas las sentencias DDL.
+    Inicializa la base de datos creando las tablas si no existen.
     """
-    # Asegurar que el directorio de la BD existe
-    os.makedirs(DATABASE_DIR, exist_ok=True)
-
+    os.makedirs(Config.DATABASE_DIR, exist_ok=True)
     with get_db() as db:
         # Crear tabla principal
         db.executescript(SCHEMA_SQL)
@@ -137,8 +125,8 @@ def init_db():
         # Crear índices de búsqueda
         for index_sql in INDEXES_SQL:
             db.execute(index_sql)
-
-    print(f"[DB] Base de datos inicializada en: {DATABASE_PATH}")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_books_year ON books(year_published)")
+    print(f"[DB] Base de datos inicializada en: {Config.DATABASE_PATH}")
 
 
 # =============================================================================
@@ -182,7 +170,8 @@ def create_book(data: dict) -> int:
 
 
 def get_all_books(search: str = None, status: str = None,
-                  sort_by: str = "created_at", sort_dir: str = "desc") -> list:
+                  sort_by: str = "created_at", sort_dir: str = "desc",
+                  limit: int = 20, offset: int = 0) -> list:
     """
     Obtiene todos los libros de la BD con soporte para búsqueda,
     filtrado por estatus y ordenación.
@@ -194,7 +183,7 @@ def get_all_books(search: str = None, status: str = None,
         sort_dir: Dirección de ordenación ('asc' o 'desc').
 
     Returns:
-        list: Lista de filas sqlite3.Row con los libros encontrados.
+        list: Lista de diccionarios con los libros encontrados.
     """
     # Validar campos de ordenación para prevenir SQL injection
     valid_sort_fields = {"title", "author", "created_at", "year_published"}
@@ -221,6 +210,11 @@ def get_all_books(search: str = None, status: str = None,
 
     # Ordenación
     sql += f" ORDER BY {sort_by} {sort_dir.upper()}"
+
+    # Paginación
+    if limit > 0:
+        sql += " LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
 
     with get_db() as db:
         rows = db.execute(sql, params).fetchall()

@@ -16,9 +16,11 @@ import os
 import uuid
 import tempfile
 import urllib.request
+import concurrent.futures
 from werkzeug.utils import secure_filename
 from app.models import create_book, get_book_by_id, update_book, delete_book
 from app.services.epub_parser import parse_epub, delete_cover_file
+from app.config import Config
 
 
 # =============================================================================
@@ -51,15 +53,13 @@ def save_uploaded_cover(file_storage) -> str:
     Guarda una imagen de portada subida manualmente por el usuario.
     Retorna la ruta relativa para almacenar en BD.
     """
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
-    os.makedirs(COVERS_DIR, exist_ok=True)
+    os.makedirs(Config.COVERS_DIR, exist_ok=True)
     
     ext = os.path.splitext(file_storage.filename)[1]
     if not ext:
         ext = ".jpg"
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    save_path = os.path.join(COVERS_DIR, unique_name)
+    save_path = os.path.join(Config.COVERS_DIR, unique_name)
     file_storage.save(save_path)
     return f"uploads/covers/{unique_name}"
 
@@ -69,12 +69,10 @@ def download_external_cover(url: str) -> str:
     Descarga una imagen de portada desde una URL externa (ej. Google Books)
     y la guarda localmente para preservar la privacidad 100% local.
     """
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    COVERS_DIR = os.path.join(BASE_DIR, "static", "uploads", "covers")
-    os.makedirs(COVERS_DIR, exist_ok=True)
+    os.makedirs(Config.COVERS_DIR, exist_ok=True)
     
     unique_name = f"{uuid.uuid4().hex}.jpg"
-    save_path = os.path.join(COVERS_DIR, unique_name)
+    save_path = os.path.join(Config.COVERS_DIR, unique_name)
     
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     with urllib.request.urlopen(req) as response, open(save_path, 'wb') as out_file:
@@ -106,17 +104,25 @@ def ingest_epub(file_storage) -> dict:
     if not filename.lower().endswith(".epub"):
         raise ValueError("El archivo debe tener extensión .epub")
 
+    # Validar tamaño del archivo antes de guardar usando content_length si está disponible
+    file_storage.seek(0, 2)
+    file_size = file_storage.tell()
+    if file_size > Config.MAX_CONTENT_LENGTH:
+        raise ValueError(f"El archivo excede el límite de {Config.MAX_CONTENT_LENGTH // (1024*1024)} MB")
+        
+    # Verificar Magic Bytes (Un ePub es un ZIP, debe empezar con PK\x03\x04)
+    file_storage.seek(0)
+    header = file_storage.read(4)
+    if header != b'PK\x03\x04':
+        raise ValueError("El archivo no es un ePub/ZIP válido (firma incorrecta)")
+    file_storage.seek(0)
+
     # Guardar temporalmente el archivo para procesarlo
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, filename)
 
     try:
         file_storage.save(temp_path)
-
-        # Validar tamaño del archivo
-        file_size = os.path.getsize(temp_path)
-        if file_size > MAX_EPUB_SIZE:
-            raise ValueError(f"El archivo excede el límite de {MAX_EPUB_SIZE // (1024*1024)} MB")
 
         # Extraer metadatos del ePub
         metadata = parse_epub(temp_path)
@@ -162,9 +168,16 @@ def create_book_manual(data: dict, cover_file=None) -> dict:
     if "reading_status" in data and data["reading_status"] not in VALID_STATUSES:
         raise ValueError(f"Estatus inválido. Opciones: {', '.join(VALID_STATUSES)}")
 
-    # Validar format si se proporciona
-    if "format" in data and data["format"] not in VALID_FORMATS:
-        raise ValueError(f"Formato inválido. Opciones: {', '.join(VALID_FORMATS)}")
+    # Validar format si se proporciona, sino usar Físico por defecto para manual
+    if "format" in data and data["format"]:
+        if data["format"] not in VALID_FORMATS:
+            raise ValueError(f"Formato inválido. Opciones: {', '.join(VALID_FORMATS)}")
+    else:
+        data["format"] = "physical"
+
+    # Convertir string vacío a None en isbn para evitar violar UNIQUE constraint
+    if "isbn" in data and not data["isbn"].strip():
+        data.pop("isbn")
 
     # Filtrar solo campos válidos
     clean_data = {k: v for k, v in data.items() if k in VALID_BOOK_FIELDS and str(v).strip()}
@@ -176,7 +189,8 @@ def create_book_manual(data: dict, cover_file=None) -> dict:
     elif cover_url:
         try:
             clean_data["cover_path"] = download_external_cover(cover_url)
-        except Exception:
+        except Exception as e:
+            print(f"[WARN] Fallo al descargar portada externa: {e}")
             pass # Ignorar fallos de descarga externa
 
     # Convertir year_published a entero si se proporciona
@@ -248,7 +262,8 @@ def update_book_data(book_id: int, data: dict, cover_file=None) -> dict:
             if existing.get("cover_path"):
                 delete_cover_file(existing["cover_path"])
             clean_data["cover_path"] = download_external_cover(cover_url)
-        except Exception:
+        except Exception as e:
+            print(f"[WARN] Fallo al descargar portada externa: {e}")
             pass
 
     # Convertir tipos numéricos
@@ -313,35 +328,28 @@ def remove_book(book_id: int) -> dict:
 
 
 def search_isbn(isbn: str) -> dict:
-    """Busca metadatos por ISBN intentando varias estrategias en orden de coste."""
+    """Busca metadatos por ISBN lanzando peticiones en paralelo para optimizar tiempo."""
     import json
     import re
     
     isbn = isbn.replace('-', '').strip()
     api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
     
-    # ==========================================================
-    # Intento 1: OpenLibrary (100% Libre y sin cuotas)
-    # ==========================================================
-    ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&jscmd=data&format=json"
-    try:
+    def fetch_openlibrary():
+        ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&jscmd=data&format=json"
         req = urllib.request.Request(ol_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
             book_key = f"ISBN:{isbn}"
             if book_key in data:
                 book = data[book_key]
-                
-                # Extraer año
                 year = ""
                 if book.get("publish_date"):
                     match = re.search(r'\d{4}', book["publish_date"])
                     if match: year = match.group(0)
-                    
                 cover_url = ""
                 if book.get("cover"):
                     cover_url = book["cover"].get("large") or book["cover"].get("medium", "")
-
                 return {
                     "title": book.get("title", ""),
                     "author": ", ".join([a.get("name", "") for a in book.get("authors", [])]),
@@ -351,12 +359,14 @@ def search_isbn(isbn: str) -> dict:
                     "language": "", 
                     "cover_url": cover_url
                 }
-    except Exception:
-        pass
+        return None
 
-    # Helper interno para procesar respuesta de Google Books
-    def _fetch_google_books(query_url):
-        req = urllib.request.Request(query_url, headers={'User-Agent': 'Mozilla/5.0'})
+    def fetch_google_books(query):
+        url = f"https://www.googleapis.com/books/v1/volumes?q={urllib.parse.quote(query)}"
+        if api_key:
+            url += f"&key={api_key}"
+            
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
             if data.get("totalItems", 0) > 0 and data.get("items"):
@@ -372,27 +382,29 @@ def search_isbn(isbn: str) -> dict:
                 }
         return None
 
-    # ==========================================================
-    # Intento 2: Google Books API Pública (Sin API Key)
-    # ==========================================================
-    try:
-        res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}")
-        if res: return res
-        res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q={isbn}")
-        if res: return res
-    except Exception:
-        # Falló silenciosamente (probablemente Error 429 Límite de Cuota)
-        pass
-
-    # ==========================================================
-    # Intento 3: Google Books API Privada (Con API Key)
-    # ==========================================================
-    if api_key:
+    # Lanza las búsquedas en paralelo.
+    # Evaluamos OpenLibrary, Google Books con `isbn:` y Google Books plano.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        future_ol = executor.submit(fetch_openlibrary)
+        future_gb_strict = executor.submit(fetch_google_books, f"isbn:{isbn}")
+        future_gb_loose = executor.submit(fetch_google_books, isbn)
+        
+        # Como OpenLibrary es más rápido y 100% libre, le damos prioridad si responde a tiempo
         try:
-            res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key={api_key}")
-            if res: return res
-            res = _fetch_google_books(f"https://www.googleapis.com/books/v1/volumes?q={isbn}&key={api_key}")
-            if res: return res
+            result = future_ol.result(timeout=2.0)
+            if result: return result
+        except Exception:
+            pass
+            
+        try:
+            result = future_gb_strict.result(timeout=3.0)
+            if result: return result
+        except Exception:
+            pass
+            
+        try:
+            result = future_gb_loose.result(timeout=3.0)
+            if result: return result
         except Exception:
             pass
             

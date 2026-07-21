@@ -18,6 +18,7 @@ dist/
 # Secretos y Credenciales (¡Crítico!)
 # =============================================================================
 .env
+.env.example
 .env.*
 *.pem
 *.key
@@ -69,3 +70,11 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+
+
+# =============================================================================
+# Auditorias
+# =============================================================================
+
+documentation/Auditoria-Tecnica-v1.md
+documentation/Auditoria-Tecnica-v2.md

@@ -35,8 +35,7 @@
         <!-- Filtro por estatus -->
         <select name="status"
                 class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[150px]"
-                id="status-filter"
-                onchange="this.form.submit()">
+                id="status-filter">
             <option value="" {{ 'selected' if not status }}>Todos los estatus</option>
             <option value="No leído" {{ 'selected' if status == 'No leído' }}>📕 No leído</option>
             <option value="Leyendo" {{ 'selected' if status == 'Leyendo' }}>📖 Leyendo</option>
@@ -46,8 +45,7 @@
         <!-- Ordenación -->
         <select name="sort_by"
                 class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[160px]"
-                id="sort-select"
-                onchange="this.form.submit()">
+                id="sort-select">
             <option value="created_at" {{ 'selected' if sort_by == 'created_at' }}>Fecha de adición</option>
             <option value="title" {{ 'selected' if sort_by == 'title' }}>Título</option>
             <option value="author" {{ 'selected' if sort_by == 'author' }}>Autor</option>
@@ -56,8 +54,7 @@
         <!-- Dirección de orden -->
         <select name="sort_dir"
                 class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[130px]"
-                id="sort-dir-select"
-                onchange="this.form.submit()">
+                id="sort-dir-select">
             <option value="desc" {{ 'selected' if sort_dir == 'desc' }}>↓ Descendente</option>
             <option value="asc" {{ 'selected' if sort_dir == 'asc' }}>↑ Ascendente</option>
         </select>
@@ -131,6 +128,16 @@
     </a>
     {% endfor %}
 </div>
+
+<!-- Botón Cargar Más -->
+{% if has_more %}
+<div class="mt-8 flex justify-center">
+    <button id="btn-load-more" data-offset="{{ offset + limit }}"
+            class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-slate-200 transition-all duration-200 shadow-md">
+        Cargar más libros...
+    </button>
+</div>
+{% endif %}
 {% else %}
 <!-- Estado vacío -->
 <div class="flex flex-col items-center justify-center min-h-[40vh] text-center" id="empty-state">

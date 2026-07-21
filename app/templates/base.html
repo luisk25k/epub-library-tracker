@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Personal Library Tracker — Gestor privado de biblioteca personal para libros digitales y físicos.">
+    
+    <!-- CSRF Token para peticiones Fetch JS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
     <title>{% block title %}Personal Library Tracker{% endblock %}</title>
 
     <!-- Google Fonts: Inter -->
@@ -13,6 +17,9 @@
 
     <!-- TailwindCSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- DOMPurify para sanitización XSS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.3/purify.min.js" integrity="sha512-TBmnYz6mBCb3MpKT5Z4FxtfluqqQO/F6+8xFTYqD5VD6O37Q6GzW1G8j2S9v3Y/s/aK1b66hI5+Z/bJ1lB+P+w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         // Configuración de TailwindCSS para tema oscuro personalizado
         tailwind.config = {
@@ -98,7 +105,7 @@
     <!-- SCRIPTS                                                            -->
     <!-- ================================================================== -->
     <!-- marked.js para renderizado de Markdown en el cliente -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.2.12/marked.min.js" integrity="sha384-wM2yU+7/VqG324Xj8b3l5QxLOMw+k9sY8p+8RtjW2o6UvjO/+i0c4N9C9DpxF0g/" crossorigin="anonymous"></script>
 
     <!-- JavaScript principal de la aplicación -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

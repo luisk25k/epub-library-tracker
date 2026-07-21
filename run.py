@@ -13,10 +13,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app import create_app
+from app.models import init_db
 
 app = create_app()
 
 if __name__ == "__main__":
+    with app.app_context():
+        init_db()  # Inicializar la base de datos al arrancar
     print("=" * 60)
     print("  Personal Library Tracker")
     print("  http://localhost:5000")
