@@ -25,21 +25,23 @@ Es ideal para lectores ávidos que buscan un lugar propio para el análisis crí
 ## ✨ Características Principales
 
 - **📖 Ingesta Automática de ePub:** Sube un archivo `.epub` y el sistema extraerá inteligentemente los metadatos (Título, Autor, Editorial, Idioma, ISBN) y la **imagen de portada**, ahorrando tiempo valioso en la catalogación.
-- **🗃️ CRUD Completo:** Crea, lee, actualiza y elimina registros literarios con un enfoque riguroso, incluyendo campos profesionales como el nombre del `Traductor` y el `Formato`.
+- **⚡ Autocompletado por ISBN:** Añade libros rápidamente ingresando su ISBN. El sistema consulta automáticamente bases de datos libres (OpenLibrary) y comerciales (Google Books) para autocompletar toda la información y descargar la portada.
+- **📥 Importación Masiva (Goodreads):** Si vienes de Goodreads, puedes subir directamente tu archivo `.csv` exportado. El sistema mapeará y migrará tu biblioteca completa (incluyendo rating y estatus), omitiendo duplicados.
+- **🗃️ CRUD Completo y Seguro:** Crea, lee, actualiza y elimina registros literarios con un enfoque riguroso. Toda la aplicación está fortificada contra ataques comunes (CSRF, XSS y Path Traversal).
 - **📊 Estado de Lectura:** Clasifica fácilmente tu colección visualmente con estados de lectura: *No leído, Leyendo, Leído*.
-- **📝 Editor de Reseñas Markdown:** Soporte nativo de Markdown para escribir reseñas extensas, análisis crítico y notas filológicas, renderizadas dinámicamente con una vista previa de doble panel.
-- **🎨 Interfaz Moderna y Oscura:** Un diseño UI/UX limpio y minimalista optimizado mediante TailwindCSS en modo oscuro, garantizando la comodidad visual.
-- **🔍 Búsqueda y Ordenación:** Filtra rápidamente tu estantería por estatus de lectura o busca directamente autores y títulos.
+- **📝 Editor de Reseñas Markdown:** Soporte nativo de Markdown para escribir reseñas extensas, análisis crítico y notas filológicas, renderizadas dinámicamente con una vista previa de doble panel y sanitizadas con DOMPurify.
+- **🎨 Interfaz Moderna y Óptima:** Un diseño UI/UX limpio y minimalista optimizado mediante TailwindCSS en modo oscuro. Incluye paginación dinámica (carga bajo demanda) para garantizar un rendimiento instantáneo incluso con miles de libros.
 
 ## 🛠️ Stack Tecnológico
 
 | Capa | Tecnología | Propósito |
 |---|---|---|
 | **Backend** | Python 3.10+ / Flask | Servidor web eficiente y minimalista. |
-| **Base de Datos** | SQLite 3 | Base de datos portable en un solo archivo. |
+| **Base de Datos** | SQLite 3 | Base de datos portable en un solo archivo (WAL mode). |
+| **Seguridad** | Flask-WTF / DOMPurify | Prevención integral de vulnerabilidades (CSRF y XSS). |
 | **Frontend** | HTML5, TailwindCSS, Vanilla JS | UI responsiva y rápida sin builds pesados de JS. |
 | **ePub Parser** | ebooklib / lxml | Lectura y extracción estructurada de archivos ePub. |
-| **Markdown** | marked.js | Renderizado seguro de Markdown en el lado del cliente. |
+| **Markdown** | marked.js | Renderizado de Markdown en el lado del cliente. |
 
 ## 🚀 Instalación y Uso
 
@@ -94,8 +96,8 @@ epub-library-tracker/
 ## 🛡️ Privacidad y Seguridad
 
 Este proyecto fue construido bajo la premisa absoluta de **privacidad por diseño**:
-- **Cero Telemetría:** Sin seguimiento, sin analíticas integradas.
-- **100% Local:** Ningún dato, libro, metadato o reseña abandona tu máquina. La aplicación no hace uso de APIs externas de catalogación (como Goodreads o Google Books).
+- **Cero Telemetría Oculta:** Sin scripts de seguimiento ni analíticas integradas.
+- **100% Local:** Tus datos, metadatos y reseñas se almacenan exclusivamente en tu máquina. Las interacciones con APIs externas (OpenLibrary, Google Books) ocurren **únicamente** cuando decides de manera manual y activa buscar un ISBN para autocompletar un libro, preservando el aislamiento del resto de tu colección.
 - **Portabilidad:** Para realizar copias de seguridad de tu biblioteca completa, simplemente copia el archivo `database/library.db` y la carpeta `app/static/uploads/covers/`.
 
 ---
