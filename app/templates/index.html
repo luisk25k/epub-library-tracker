@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Estantería — Personal Library Tracker{% endblock %}
+
+{% block content %}
+<!-- ====================================================================== -->
+<!-- HEADER: Título + Contador                                              -->
+<!-- ====================================================================== -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-slate-100 mb-1">Mi Estantería</h1>
+        <p class="text-slate-400 text-sm">
+            {{ books|length }} libro{{ 's' if books|length != 1 else '' }} en tu colección
+        </p>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- BARRA DE BÚSQUEDA, FILTROS Y ORDENACIÓN                               -->
+<!-- ====================================================================== -->
+<form method="GET" action="/" class="mb-8" id="filter-form">
+    <div class="flex flex-col sm:flex-row gap-3">
+        <!-- Campo de búsqueda -->
+        <div class="relative flex-1">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text"
+                   name="search"
+                   value="{{ search }}"
+                   placeholder="Buscar por título o autor..."
+                   class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200"
+                   id="search-input">
+        </div>
+
+        <!-- Filtro por estatus -->
+        <select name="status"
+                class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[150px]"
+                id="status-filter"
+                onchange="this.form.submit()">
+            <option value="" {{ 'selected' if not status }}>Todos los estatus</option>
+            <option value="No leído" {{ 'selected' if status == 'No leído' }}>📕 No leído</option>
+            <option value="Leyendo" {{ 'selected' if status == 'Leyendo' }}>📖 Leyendo</option>
+            <option value="Leído" {{ 'selected' if status == 'Leído' }}>📗 Leído</option>
+        </select>
+
+        <!-- Ordenación -->
+        <select name="sort_by"
+                class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[160px]"
+                id="sort-select"
+                onchange="this.form.submit()">
+            <option value="created_at" {{ 'selected' if sort_by == 'created_at' }}>Fecha de adición</option>
+            <option value="title" {{ 'selected' if sort_by == 'title' }}>Título</option>
+            <option value="author" {{ 'selected' if sort_by == 'author' }}>Autor</option>
+        </select>
+
+        <!-- Dirección de orden -->
+        <select name="sort_dir"
+                class="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-200 min-w-[130px]"
+                id="sort-dir-select"
+                onchange="this.form.submit()">
+            <option value="desc" {{ 'selected' if sort_dir == 'desc' }}>↓ Descendente</option>
+            <option value="asc" {{ 'selected' if sort_dir == 'asc' }}>↑ Ascendente</option>
+        </select>
+
+        <!-- Botón buscar -->
+        <button type="submit"
+                class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-medium text-sm rounded-lg transition-all duration-200"
+                id="btn-search">
+            Buscar
+        </button>
+    </div>
+</form>
+
+<!-- ====================================================================== -->
+<!-- GRID DE LIBROS (ESTANTERÍA)                                            -->
+<!-- ====================================================================== -->
+{% if books|length > 0 %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" id="books-grid">
+    {% for book in books %}
+    <a href="/books/{{ book.id }}" class="book-card group" id="book-card-{{ book.id }}">
+        <!-- Portada -->
+        <div class="relative overflow-hidden rounded-lg">
+            {% if book.cover_path %}
+            <img src="{{ url_for('static', filename=book.cover_path) }}"
+                 alt="Portada de {{ book.title }}"
+                 class="cover-img"
+                 loading="lazy">
+            {% else %}
+            <img src="{{ url_for('static', filename='img/no-cover.svg') }}"
+                 alt="Sin portada"
+                 class="cover-img">
+            {% endif %}
+
+            <!-- Overlay con gradiente al hover -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+        </div>
+
+        <!-- Información del libro -->
+        <div class="mt-3 px-1">
+            <!-- Status badge -->
+            {% if book.reading_status == 'No leído' %}
+            <span class="status-badge status-badge--not-read">No leído</span>
+            {% elif book.reading_status == 'Leyendo' %}
+            <span class="status-badge status-badge--reading">Leyendo</span>
+            {% elif book.reading_status == 'Leído' %}
+            <span class="status-badge status-badge--read">Leído</span>
+            {% endif %}
+
+            <!-- Título -->
+            <h3 class="text-sm font-semibold text-slate-200 mt-2 line-clamp-2 leading-tight group-hover:text-amber-400 transition-colors duration-200">
+                {{ book.title }}
+            </h3>
+
+            <!-- Autor -->
+            <p class="text-xs text-slate-500 mt-1 truncate">
+                {{ book.author }}
+            </p>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<!-- Estado vacío -->
+<div class="flex flex-col items-center justify-center min-h-[40vh] text-center" id="empty-state">
+    <span class="text-6xl mb-6">📚</span>
+    <h2 class="text-2xl font-semibold text-slate-300 mb-3">
+        {% if search or status %}
+            No se encontraron resultados
+        {% else %}
+            Tu estantería está vacía
+        {% endif %}
+    </h2>
+    <p class="text-slate-500 mb-8 max-w-md">
+        {% if search or status %}
+            Intenta con otros criterios de búsqueda o limpia los filtros.
+        {% else %}
+            Comienza añadiendo tu primer libro, ya sea manualmente o importando un archivo .epub.
+        {% endif %}
+    </p>
+    {% if search or status %}
+    <a href="/"
+       class="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium text-sm px-5 py-2.5 rounded-lg transition-all duration-200">
+        Limpiar filtros
+    </a>
+    {% else %}
+    <a href="/books/new"
+       class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-medium text-sm px-5 py-2.5 rounded-lg transition-all duration-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Añadir tu primer libro
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

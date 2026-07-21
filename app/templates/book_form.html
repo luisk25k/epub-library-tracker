@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar Libro' if editing else 'Añadir Libro' }} — Personal Library Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-8">
+        <a href="{{ '/books/' ~ book.id if editing else '/' }}" class="text-slate-400 hover:text-slate-200 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+        </a>
+        <h1 class="text-3xl font-bold text-slate-100">
+            {{ 'Editar Libro' if editing else 'Añadir Nuevo Libro' }}
+        </h1>
+    </div>
+
+    <!-- Sección de Importación ePub (Sólo en Creación) -->
+    {% if not editing %}
+    <div class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 mb-8">
+        <h2 class="text-lg font-semibold text-slate-200 mb-2 flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Importar desde ePub (Autocompletado)
+        </h2>
+        <p class="text-sm text-slate-400 mb-4">
+            Sube un archivo .epub para extraer automáticamente el título, autor, editorial, idioma, ISBN y la imagen de portada.
+        </p>
+        
+        <div class="flex items-center gap-4">
+            <input type="file" 
+                   id="epub-upload" 
+                   accept=".epub"
+                   class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer">
+            
+            <button type="button"
+                    onclick="uploadEpub(document.getElementById('epub-upload'))"
+                    class="whitespace-nowrap px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-medium rounded-lg transition-colors duration-200"
+                    id="btn-upload-epub">
+                Subir ePub
+            </button>
+        </div>
+    </div>
+    
+    <div class="flex items-center gap-4 mb-8">
+        <hr class="flex-1 border-slate-700">
+        <span class="text-sm text-slate-500 uppercase tracking-wider font-semibold">o Ingreso Manual</span>
+        <hr class="flex-1 border-slate-700">
+    </div>
+    {% endif %}
+
+    <!-- Formulario Principal -->
+    <form onsubmit="submitBookForm(event, {{ book.id if editing else 'null' }})" class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg shadow-black/20">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Título (Obligatorio) -->
+            <div class="col-span-1 md:col-span-2">
+                <label for="title" class="block text-sm font-medium text-slate-300 mb-1">Título *</label>
+                <input type="text" id="title" name="title" required
+                       value="{{ book.title if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Autor (Obligatorio) -->
+            <div>
+                <label for="author" class="block text-sm font-medium text-slate-300 mb-1">Autor *</label>
+                <input type="text" id="author" name="author" required
+                       value="{{ book.author if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Editorial -->
+            <div>
+                <label for="publisher" class="block text-sm font-medium text-slate-300 mb-1">Editorial</label>
+                <input type="text" id="publisher" name="publisher"
+                       value="{{ book.publisher if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Traductor -->
+            <div>
+                <label for="translator" class="block text-sm font-medium text-slate-300 mb-1">Traductor</label>
+                <input type="text" id="translator" name="translator"
+                       value="{{ book.translator if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Idioma -->
+            <div>
+                <label for="language" class="block text-sm font-medium text-slate-300 mb-1">Idioma</label>
+                <input type="text" id="language" name="language" placeholder="Ej. es, en"
+                       value="{{ book.language if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- ISBN -->
+            <div>
+                <label for="isbn" class="block text-sm font-medium text-slate-300 mb-1">ISBN</label>
+                <input type="text" id="isbn" name="isbn"
+                       value="{{ book.isbn if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Año de Publicación -->
+            <div>
+                <label for="year_published" class="block text-sm font-medium text-slate-300 mb-1">Año de Publicación</label>
+                <input type="number" id="year_published" name="year_published"
+                       value="{{ book.year_published if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Número de Páginas -->
+            <div>
+                <label for="num_pages" class="block text-sm font-medium text-slate-300 mb-1">Número de Páginas</label>
+                <input type="number" id="num_pages" name="num_pages" min="1"
+                       value="{{ book.num_pages if book else '' }}"
+                       class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Formato -->
+            <div>
+                <label for="format" class="block text-sm font-medium text-slate-300 mb-1">Formato</label>
+                <select id="format" name="format"
+                        class="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                    <option value="digital" {{ 'selected' if book and book.format == 'digital' else '' }}>Digital (ePub, PDF)</option>
+                    <option value="physical" {{ 'selected' if book and book.format == 'physical' else '' }}>Físico (Papel)</option>
+                </select>
+            </div>
+
+            <!-- Estatus de Lectura -->
+            <div class="col-span-1 md:col-span-2">
+                <label for="reading_status" class="block text-sm font-medium text-slate-300 mb-1">Estado de Lectura</label>
+                <div class="flex gap-4 p-1 bg-slate-900 rounded-lg border border-slate-600">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="reading_status" value="No leído" class="peer sr-only" 
+                               {{ 'checked' if not book or book.reading_status == 'No leído' else '' }}>
+                        <div class="text-center px-4 py-2 rounded-md text-sm font-medium text-slate-400 peer-checked:bg-slate-700 peer-checked:text-slate-100 transition-colors">
+                            No leído
+                        </div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="reading_status" value="Leyendo" class="peer sr-only"
+                               {{ 'checked' if book and book.reading_status == 'Leyendo' else '' }}>
+                        <div class="text-center px-4 py-2 rounded-md text-sm font-medium text-slate-400 peer-checked:bg-blue-600 peer-checked:text-white transition-colors">
+                            Leyendo
+                        </div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="reading_status" value="Leído" class="peer sr-only"
+                               {{ 'checked' if book and book.reading_status == 'Leído' else '' }}>
+                        <div class="text-center px-4 py-2 rounded-md text-sm font-medium text-slate-400 peer-checked:bg-green-600 peer-checked:text-white transition-colors">
+                            Leído
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Notas / Reseña (Markdown) -->
+            <div class="col-span-1 md:col-span-2">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-medium text-slate-300">Reseña y Notas (Soporta Markdown)</label>
+                    
+                    <!-- Tabs Editor/Preview -->
+                    <div class="flex text-xs bg-slate-900 rounded-t-lg border border-b-0 border-slate-600 overflow-hidden">
+                        <button type="button" onclick="switchTab('editor')" id="tab-editor" class="px-3 py-1.5 border-b-2 border-amber-400 text-amber-400 font-medium">Editor</button>
+                        <button type="button" onclick="switchTab('preview')" id="tab-preview" class="px-3 py-1.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Vista Previa</button>
+                    </div>
+                </div>
+
+                <div class="border border-slate-600 rounded-lg rounded-tr-none overflow-hidden bg-slate-900 min-h-[200px]">
+                    <!-- Editor Pane -->
+                    <div id="editor-pane" class="h-full">
+                        <textarea id="review-input" name="review" rows="8" 
+                                  placeholder="# Mi opinión&#10;&#10;Escribe tus notas aquí..."
+                                  class="w-full h-full p-4 bg-transparent text-slate-200 resize-y focus:outline-none focus:ring-0">{{ book.review if book and book.review else '' }}</textarea>
+                    </div>
+                    
+                    <!-- Preview Pane -->
+                    <div id="preview-pane" class="hidden p-4 h-full overflow-y-auto markdown-preview bg-slate-900 text-slate-200 min-h-[200px]">
+                        <!-- Renderizado por JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex justify-end gap-4 mt-8 pt-6 border-t border-slate-700">
+            <a href="{{ '/books/' ~ book.id if editing else '/' }}" 
+               class="px-6 py-2.5 rounded-lg font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors">
+                Cancelar
+            </a>
+            <button type="submit" 
+                    class="px-8 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg shadow-lg shadow-amber-500/20 transition-all duration-200 transform hover:-translate-y-0.5">
+                {{ 'Guardar Cambios' if editing else 'Crear Libro' }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

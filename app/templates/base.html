@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Personal Library Tracker — Gestor privado de biblioteca personal para libros digitales y físicos.">
+    <title>{% block title %}Personal Library Tracker{% endblock %}</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- TailwindCSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuración de TailwindCSS para tema oscuro personalizado
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        surface: '#1e293b',
+                        'surface-hover': '#334155',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Segoe UI', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-900 text-slate-50 font-sans">
+
+    <!-- ================================================================== -->
+    <!-- NAVBAR                                                             -->
+    <!-- ================================================================== -->
+    <nav class="sticky top-0 z-40 bg-slate-800/80 backdrop-blur-md border-b border-slate-700/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo / Nombre -->
+                <a href="/" class="flex items-center gap-3 group">
+                    <span class="text-2xl">📚</span>
+                    <span class="text-lg font-semibold text-slate-100 group-hover:text-amber-400 transition-colors duration-200">
+                        Library Tracker
+                    </span>
+                </a>
+
+                <!-- Navegación derecha -->
+                <div class="flex items-center gap-4">
+                    <a href="/"
+                       class="text-sm text-slate-400 hover:text-slate-100 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-slate-700/50"
+                       id="nav-home">
+                        Estantería
+                    </a>
+                    <a href="/books/new"
+                       class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-medium text-sm px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/20"
+                       id="nav-add-book">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Añadir libro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ================================================================== -->
+    <!-- CONTENIDO PRINCIPAL                                                -->
+    <!-- ================================================================== -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ================================================================== -->
+    <!-- FOOTER                                                             -->
+    <!-- ================================================================== -->
+    <footer class="border-t border-slate-800 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-xs text-slate-600">
+                Personal Library Tracker — Sistema privado de catalogación · v1.0
+            </p>
+        </div>
+    </footer>
+
+    <!-- ================================================================== -->
+    <!-- TOAST CONTAINER (Notificaciones)                                   -->
+    <!-- ================================================================== -->
+    <div id="toast-container"></div>
+
+    <!-- ================================================================== -->
+    <!-- SCRIPTS                                                            -->
+    <!-- ================================================================== -->
+    <!-- marked.js para renderizado de Markdown en el cliente -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- JavaScript principal de la aplicación -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

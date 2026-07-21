@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} — Personal Library Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Breadcrumbs & Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors w-fit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Volver a la Estantería
+        </a>
+
+        <div class="flex items-center gap-3">
+            <a href="/books/{{ book.id }}/edit" 
+               class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-sm font-medium transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Editar
+            </a>
+            <button type="button" 
+                    onclick="confirmDelete({{ book.id }}, '{{ book.title | replace('\'', '\\\'') }}')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Eliminar
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <!-- Columna Izquierda: Portada y Metadata Rápida -->
+        <div class="md:col-span-4 lg:col-span-3 flex flex-col items-center md:items-start">
+            <div class="w-48 md:w-full rounded-xl overflow-hidden shadow-2xl shadow-black/50 mb-6 relative group">
+                {% if book.cover_path %}
+                <img src="{{ url_for('static', filename=book.cover_path) }}" 
+                     alt="Portada de {{ book.title }}" 
+                     class="w-full h-auto object-cover aspect-[2/3]">
+                {% else %}
+                <img src="{{ url_for('static', filename='img/no-cover.svg') }}" 
+                     alt="Sin portada" 
+                     class="w-full h-auto">
+                {% endif %}
+            </div>
+
+            <!-- Estatus de Lectura -->
+            <div class="w-full p-4 bg-slate-800 rounded-xl border border-slate-700 text-center mb-6">
+                <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Estatus Actual</p>
+                {% if book.reading_status == 'No leído' %}
+                <div class="inline-flex items-center gap-2 text-red-400 font-medium">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div> No leído
+                </div>
+                {% elif book.reading_status == 'Leyendo' %}
+                <div class="inline-flex items-center gap-2 text-blue-400 font-medium">
+                    <div class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></div> Leyendo
+                </div>
+                {% elif book.reading_status == 'Leído' %}
+                <div class="inline-flex items-center gap-2 text-green-400 font-medium">
+                    <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div> Leído
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Metadata secundaria lateral -->
+            <div class="w-full space-y-4">
+                {% if book.isbn %}
+                <div>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">ISBN</p>
+                    <p class="text-sm font-mono text-slate-300">{{ book.isbn }}</p>
+                </div>
+                {% endif %}
+                
+                <div>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Formato</p>
+                    <p class="text-sm text-slate-300 flex items-center gap-2">
+                        {% if book.format == 'digital' %}
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Digital
+                        {% else %}
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        Físico
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Añadido el</p>
+                    <p class="text-sm text-slate-300">{{ book.created_at.split('T')[0] if book.created_at else '' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Título, Autor y Metadata Principal -->
+        <div class="md:col-span-8 lg:col-span-9">
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-50 mb-2 leading-tight">
+                {{ book.title }}
+            </h1>
+            <p class="text-xl md:text-2xl text-amber-500 font-medium mb-8">
+                por {{ book.author }}
+            </p>
+
+            <!-- Metadata Principal (Grid) -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-6 mb-8">
+                <h3 class="text-lg font-semibold text-slate-200 mb-4 border-b border-slate-700 pb-2">Detalles de Publicación</h3>
+                
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-y-6 gap-x-4">
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1">Editorial</p>
+                        <p class="text-sm text-slate-200">{{ book.publisher or '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1">Año</p>
+                        <p class="text-sm text-slate-200">{{ book.year_published or '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1">Páginas</p>
+                        <p class="text-sm text-slate-200">{{ book.num_pages or '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1">Idioma</p>
+                        <p class="text-sm text-slate-200 uppercase">{{ book.language or '—' }}</p>
+                    </div>
+                    {% if book.translator %}
+                    <div class="col-span-2">
+                        <p class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1">Traductor</p>
+                        <p class="text-sm text-slate-200">{{ book.translator }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Reseña y Notas -->
+            <div class="mt-8">
+                <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                    Mis Notas y Reseña
+                </h3>
+                
+                {% if book.review %}
+                <!-- El contenedor markdown-preview es estilizado globalmente en styles.css -->
+                <!-- marked.js renderiza el markdown al cargar la página -->
+                <div class="markdown-preview bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-inner text-slate-300" id="review-content" data-markdown="{{ book.review }}">
+                    <!-- Placeholder, será sobreescrito por JS -->
+                    <p class="text-slate-500 italic">Renderizando markdown...</p>
+                </div>
+                {% else %}
+                <div class="bg-slate-900/50 border border-slate-800 border-dashed rounded-xl p-8 text-center">
+                    <p class="text-slate-500 mb-4">Aún no has escrito ninguna nota para este libro.</p>
+                    <a href="/books/{{ book.id }}/edit" class="text-amber-500 hover:text-amber-400 font-medium text-sm transition-colors">
+                        Escribir reseña ahora →
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{% if book.review %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const reviewContainer = document.getElementById('review-content');
+        if (reviewContainer && typeof marked !== 'undefined') {
+            const rawMarkdown = reviewContainer.getAttribute('data-markdown');
+            // Decode si es necesario y parsear
+            if (rawMarkdown) {
+                reviewContainer.innerHTML = marked.parse(rawMarkdown);
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+# =============================================================================
+# Personal Library Tracker — Dependencias Python
+# =============================================================================
+# Framework web
+Flask==3.1.1
+
+# Parsing de archivos ePub
+EbookLib==0.18
+
+# Dependencia de ebooklib para parsing HTML/XML
+lxml==5.4.0
+
+# Servidor WSGI de desarrollo (opcional, Flask incluye werkzeug)
+# gunicorn==23.0.0  # Descomentar para producción en Linux
