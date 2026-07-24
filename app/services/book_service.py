@@ -363,9 +363,9 @@ def search_isbn(isbn: str) -> dict:
                 }
         return None
 
-    def fetch_google_books(query):
+    def fetch_google_books(query, use_key=False):
         url = f"https://www.googleapis.com/books/v1/volumes?q={urllib.parse.quote(query)}"
-        if api_key:
+        if use_key and api_key:
             url += f"&key={api_key}"
             
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -384,32 +384,33 @@ def search_isbn(isbn: str) -> dict:
                 }
         return None
 
-    # Lanza las búsquedas en paralelo.
-    # Evaluamos OpenLibrary, Google Books con `isbn:` y Google Books plano.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        future_ol = executor.submit(fetch_openlibrary)
-        future_gb_strict = executor.submit(fetch_google_books, f"isbn:{isbn}")
-        future_gb_loose = executor.submit(fetch_google_books, isbn)
-        
-        # Como OpenLibrary es más rápido y 100% libre, le damos prioridad si responde a tiempo
+    # Secuencia Estricta (Para no sobreutilizar la API Key)
+    # 1. OpenLibrary (Free)
+    try:
+        res = fetch_openlibrary()
+        if res: return res
+    except Exception:
+        pass
+
+    # 2. Google Books (Public API - Sin Key)
+    try:
+        res = fetch_google_books(f"isbn:{isbn}", use_key=False)
+        if res: return res
+        res = fetch_google_books(isbn, use_key=False)
+        if res: return res
+    except Exception:
+        pass
+
+    # 3. Google Books (Private API - Con Key)
+    if api_key:
         try:
-            result = future_ol.result(timeout=2.0)
-            if result: return result
+            res = fetch_google_books(f"isbn:{isbn}", use_key=True)
+            if res: return res
+            res = fetch_google_books(isbn, use_key=True)
+            if res: return res
         except Exception:
             pass
-            
-        try:
-            result = future_gb_strict.result(timeout=3.0)
-            if result: return result
-        except Exception:
-            pass
-            
-        try:
-            result = future_gb_loose.result(timeout=3.0)
-            if result: return result
-        except Exception:
-            pass
-            
+
     return None
 
 

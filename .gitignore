@@ -78,3 +78,12 @@ htmlcov/
 
 documentation/Auditoria-Tecnica-v1.md
 documentation/Auditoria-Tecnica-v2.md
+documentation/CyberNeo-Report.md
+
+# =============================================================================
+# Archivos de la Aplicación y Compilados
+# =============================================================================
+database/
+app/static/uploads/
+*.spec
+*.bat

@@ -64,8 +64,8 @@ source venv/bin/activate
 # 4. Instalar las dependencias
 pip install -r requirements.txt
 
-# 5. Iniciar la aplicación
-python run.py
+# 5. Iniciar la aplicación en segundo plano
+Iniciar_Biblioteca.bat
 ```
 
 > La aplicación estará disponible localmente en tu navegador en: **`http://localhost:5000`**
@@ -86,12 +86,12 @@ epub-library-tracker/
 │   ├── static/
 │   │   ├── css/ & js/         # Estilos y comportamiento cliente
 │   │   └── uploads/covers/    # Almacenamiento local de portadas extraídas
-│   └── templates/             # Vistas HTML5 puras (index, form, detail)
-├── database/
-│   └── library.db             # Archivo SQLite generado automáticamente en runtime
-├── tests/                     # Tests de integración
-├── run.py                     # Punto de entrada del servidor
-└── requirements.txt           # Dependencias de Python
+│   └── templates/             # Vistas HTML (Base y Macros)
+├── database/                  # [Ruta Externa] Base de datos SQLite (library.db)
+├── Iniciar_Biblioteca.bat     # Lanzador principal silencioso
+├── launcher.py                # Script de inicio en segundo plano
+├── requirements.txt           # Dependencias de Python
+└── run.py                     # Script de desarrollo con terminal
 ```
 
 ## 🛡️ Privacidad y Seguridad

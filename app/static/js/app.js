@@ -483,6 +483,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // =========================================================================
+    // Shutdown
+    // =========================================================================
+    const btnShutdown = document.getElementById('btn-shutdown');
+    if (btnShutdown) {
+        btnShutdown.addEventListener('click', async () => {
+            if (confirm("¿Seguro que deseas apagar el servidor? (La pestaña se cerrará)")) {
+                try {
+                    await fetch('/api/shutdown', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken()
+                        }
+                    });
+                    // Intentar cerrar la pestaña
+                    window.close();
+                    document.body.innerHTML = '<div class="flex items-center justify-center h-screen bg-slate-900 text-white"><h1 class="text-2xl">Servidor apagado. Ya puedes cerrar esta ventana.</h1></div>';
+                } catch (e) {
+                    console.error("Error al apagar:", e);
+                }
+            }
+        });
+    }
 });
 
 // =============================================================================

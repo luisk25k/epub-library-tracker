@@ -19,11 +19,15 @@ Vistas HTML (Server-Side Rendering):
 - GET    /books/<id>/edit     → Formulario de edición (book_form.html)
 """
 
-from flask import Blueprint, request, jsonify, render_template
+import os
+import sys
+import signal
+from flask import Blueprint, request, jsonify, render_template, send_from_directory
 from app.models import get_all_books, get_book_by_id
 from app.services.book_service import (
     ingest_epub, create_book_manual, update_book_data, remove_book, search_isbn, import_goodreads_csv
 )
+from app.config import Config
 
 # =============================================================================
 # Blueprint Registration
@@ -297,3 +301,30 @@ def api_delete_book(book_id):
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": f"Error interno: {str(e)}"}), 500
+
+
+@main.route("/static/uploads/covers/<path:filename>")
+def serve_covers(filename):
+    """
+    Ruta dinámica para servir portadas. 
+    Es vital cuando la app está corriendo como ejecutable (PyInstaller)
+    para poder servir las imágenes desde el directorio persistente (DATA_DIR).
+    """
+    if getattr(sys, 'frozen', False):
+        return send_from_directory(Config.COVERS_DIR, filename)
+    else:
+        # Modo desarrollo local, la ruta estática por defecto de Flask
+        # usualmente maneja esto, pero lo redirigimos explícitamente a su ubicación
+        return send_from_directory(Config.COVERS_DIR, filename)
+
+
+@main.route("/api/shutdown", methods=["POST"])
+def api_shutdown():
+    """
+    POST /api/shutdown — Cierra la aplicación (solo útil para modo ejecutable silencioso).
+    """
+    # Usamos os.kill para matar el proceso de forma limpia
+    # ya que Werkzeug descartó la función server.shutdown
+    pid = os.getpid()
+    os.kill(pid, signal.SIGTERM)
+    return jsonify({"message": "Servidor apagado correctamente"}), 200
